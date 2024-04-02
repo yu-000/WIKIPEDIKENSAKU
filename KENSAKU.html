@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>うぃきぺでぃ検索</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        #searchBox {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        #searchQuery {
+            padding: 10px;
+            font-size: 16px;
+            width: 300px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 10px;
+            font-size: 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+        #searchResults {
+            margin-top: 20px;
+        }
+
+        #searchResults div {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+
+        #searchResults div img {
+            max-width: 100px;
+            max-height: 100px;
+            margin-right: 10px;
+            float: left;
+        }
+
+        #moreResults {
+            display: none;
+            width: 100%;
+            padding: 10px;
+            margin-top: 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        #moreResults:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <div id="searchBox">
+        <form onsubmit="performSearch(); return false;">
+            <input type="text" id="searchQuery" placeholder="うぃきぺでぃ検索する">
+            <button type="submit">検索</button>
+        </form>
+    </div>
+    <div id="searchResults"></div>
+    <button id="moreResults" onclick="loadMoreResults()">追加表示</button>
+
+    <script>
+        let currentOffset = 0;
+        let currentQuery = '';
+        let continueSroffset = '';
+
+        function performSearch() {
+            currentQuery = document.getElementById('searchQuery').value;
+            currentOffset = 0;
+            continueSroffset = '';
+            const resultsContainer = document.getElementById('searchResults');
+            resultsContainer.innerHTML = ''; // 新しい検索で結果をクリア
+            loadResults(currentQuery);
+        }
+
+        function loadMoreResults() {
+            loadResults(currentQuery);
+        }
+
+        async function loadResults(query) {
+            const resultsContainer = document.getElementById('searchResults');
+            document.getElementById('moreResults').style.display = 'none';
+
+            const url = new URL('https://ja.wikipedia.org/w/api.php');
+            const params = {
+                action: 'query',
+                generator: 'search',
+                gsrsearch: query,
+                gsrlimit: 10,
+                prop: 'pageimages|extracts',
+                pilimit: 'max',
+                exchars: '200',
+                exintro: '',
+                explaintext: '',
+                exlimit: 'max',
+                format: 'json',
+                origin: '*',
+                pithumbsize: 100
+            };
+            if (continueSroffset) {
+                params.gsroffset = continueSroffset;
+            }
+
+            url.search = new URLSearchParams(params);
+
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if (data.query && data.query.pages) {
+                displayResults(data.query.pages);
+                if (data.continue) {
+                    continueSroffset = data.continue.gsroffset;
+                    document.getElementById('moreResults').style.display = 'block';
+                }
+            } else {
+                if (currentOffset === 0) {
+                    displayNoResults();
+                }
+            }
+        }
+
+        function displayResults(pages) {
+            const resultsContainer = document.getElementById('searchResults');
+
+            Object.values(pages).forEach(page => {
+                const resultItem = document.createElement('div');
+                const pageLink = `https://ja.wikipedia.org/wiki/${encodeURIComponent(page.title)}`;
+                let imageHtml = page.thumbnail ? `<img src="${page.thumbnail.source}" alt="${page.title}">` : '';
+                resultItem.innerHTML = `${imageHtml}<h4><a href="${pageLink}" target="_blank">${page.title}</a></h4><p>${page.extract}</p>`;
+                resultsContainer.appendChild(resultItem);
+            });
+        }
+
+        function displayNoResults() {
+            const resultsContainer = document.getElementById('searchResults');
+            resultsContainer.innerHTML = '<p>検索結果が見つかりませんでした。</p>';
+        }
+    </script>
+</body>
+</html>
